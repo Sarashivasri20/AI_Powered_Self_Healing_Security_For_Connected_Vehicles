@@ -1,5 +1,8 @@
 # AI_Powered_Self_Healing_Security_For_Connected_Vehicles
 
+A Flask-based intelligent security system designed to detect and respond to anomalies in vehicle CAN bus communication using machine learning, natural language processing, and real-time data simulation.  
+The system supports patch deployment, voice commands, and threat explanations to provide a self-healing automotive environment.
+
 ## OTIDS Dataset (CAN Dataset for Intrusion Detection)
 
 The OTIDS (CAN Dataset for Intrusion Detection) is a dataset developed for evaluating intrusion detection systems (IDS) in Controller Area Network (CAN) bus communications within vehicles. The CAN protocol facilitates real-time data exchange among electronic control units (ECUs) in vehicles, but its design lacks source and destination address information, making it susceptible to unauthorized message injections that can lead to system malfunctions.
@@ -7,6 +10,7 @@ The OTIDS (CAN Dataset for Intrusion Detection) is a dataset developed for evalu
 ### Dataset Files
 
 The OTIDS dataset includes several text files containing raw CAN bus data, attack scenarios, and metadata. Below are the filenames for the included text files:
+
 
 - **Attack_free_dataset.txt**  
   Contains data from normal vehicle operations without any attack.
