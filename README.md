@@ -38,6 +38,73 @@ This Flask-based application simulates a connected vehicle's CAN bus environment
 - Text-to-speech available for verbal feedback
 - All data is served via Flask REST API endpoints
 
+## Key Features
+
+- Real-time CAN data simulation and visualization
+- Anomaly detection using trained ML model
+- Threat explanation and logging
+- Patch suggestion and simulated deployment
+- Voice command support via Whisper (Speech-to-Text)
+- Text-to-speech feedback system
+- Historical logs and threat records
+- GPT-like chatbot interface for threat-related queries
+
+## API Endpoints
+
+| Method | Endpoint            | Description                            |
+|--------|---------------------|----------------------------------------|
+| GET    | /vehicle_data       | Returns current CAN data               |
+| POST   | /detect             | Sends CAN data to detect anomalies     |
+| GET    | /history            | Fetch general event history            |
+| GET    | /threat             | Fetch recent threat detections         |
+| POST   | /transcribe         | Uploads audio file, returns transcript |
+| POST   | /tts                | Converts text to speech (returns .wav) |
+| POST   | /apply_patch        | Deploys simulated patch for a threat   |
+| POST   | /generate-response  | GPT-style response to user questions   |
+| GET    | /health             | Returns system status (health check)   |
+
+## Installation & Setup
+
+1. Clone the repository
+2. Set up a virtual environment:
+3. Install requirements:
+4. Run the Flask app: python app.py
+ The app starts on `http://localhost:5000/`
+
+## ML Model Info
+
+- Model: Random Forest Classifier
+- Trained on: OTIDS Dataset
+- Features used: CAN ID, DLC, bytes 0-7
+- Output: Binary classification (normal / anomaly)
+
+## Project Structure
+self_healing_ai_patch/           # Root project folder
+│
+├── backend/                     # Backend system (Flask API, AI processing)
+│   ├── app.py                   # Main Flask app (handles /detect, /history)
+│   ├── can_data.py              # CAN bus data processing (loads OTIDS dataset)
+│   ├── anomaly_detector.py      # Isolation Forest for anomaly detection
+│   ├── gpt_threat.py            # GPT for threat explanation & simulation
+│   ├── auto_patch.py            # AI-generated patch suggestions
+│   ├── whisper_tts.py           # Voice interface (Whisper + Text-to-Speech)
+│   ├── history_logger.py        # Logs detected threats into SQLite
+│   ├── requirements.txt         # Backend dependencies (Flask, OpenAI, SciKit-Learn)
+│
+├── frontend/                    # Frontend system (Streamlit dashboard)
+│   ├── dashboard.py             # Streamlit UI (fetches /detect + /history)
+│   ├── styles.py                # UI styling (color codes, fonts)
+│   ├── requirements.txt         # Frontend dependencies (Streamlit, Requests)
+│
+├── data/                        # Raw & processed datasets
+│   ├── otids.csv                # OTIDS CAN dataset (real-world vehicle data)
+│   ├── processed_data.csv       # Preprocessed data for anomaly detection
+│
+├── logs/                        # Threat detection logs
+│   ├── threats.sqlite           # SQLite database storing detected threats
+│   ├── sample_logs.txt          # Sample log outputs for debugging
+│
+└── .gitignore                   # Git ignore rules
 
 
-  
+
