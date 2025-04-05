@@ -23,4 +23,21 @@ The OTIDS dataset includes several text files containing raw CAN bus data, attac
 
 - **Impersonation_attack_dataset.txt**  
   Data representing impersonation attacks on the CAN bus.
+
+## Overview
+
+This Flask-based application simulates a connected vehicle's CAN bus environment, detects anomalies in real time using a trained machine learning model, explains threats using a GPT-like interface, supports voice-based interaction through Whisper, and deploys simulated patches to respond to attacks. A live dashboard displays vehicle health, threats, and patch history.
+
+## System Architecture
+
+- Real-time CAN data is generated and monitored
+- ML model detects anomalies
+- Threats are logged with explanations
+- Patch suggestions are generated and deployed
+- Audio input can be transcribed using Whisper
+- Text-to-speech available for verbal feedback
+- All data is served via Flask REST API endpoints
+
+
+
   
