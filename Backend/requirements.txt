@@ -1,0 +1,8 @@
+Flask
+flask-cors
+pandas
+joblib
+requests
+transformers
+torch
+soundfile
