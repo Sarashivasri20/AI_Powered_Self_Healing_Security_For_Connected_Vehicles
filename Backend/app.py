@@ -6,15 +6,17 @@ import random
 import time
 import threading
 import os
+import re
 
 # Your modules
-from history_logger import log_threat, fetch_threat_history, fetch_history, get_threat, log_patch
+from history_logger import log_threat, fetch_threat_history, fetch_history, log_patch
 from whisper_tts import transcribe_audio, generate_speech
 from transformers import GPT2LMHeadModel, GPT2Tokenizer, pipeline
+from g_model import getResponse
 
 # Load model and tokenizer the Hugging Face way
-model = GPT2LMHeadModel.from_pretrained("./model/distilgpt2_model")
-tokenizer = GPT2Tokenizer.from_pretrained("./model/distilgpt2_model")
+model = GPT2LMHeadModel.from_pretrained("./model/fine_tuned_distilgpt2")
+tokenizer = GPT2Tokenizer.from_pretrained("./model/fine_tuned_distilgpt2")
 
 # Create the text generation pipeline
 gpt2_pipeline = pipeline("text-generation", model=model, tokenizer=tokenizer)
@@ -26,7 +28,8 @@ app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
 # Load trained anomaly detection model
-model = joblib.load("./model/random_forest_model.pkl")
+# model = joblib.load("./model/random_forest_model.pkl")
+model = joblib.load("./model/anomaly_model.pkl")
 
 # Global vehicle data
 current_vehicle_data = {}
@@ -159,8 +162,6 @@ def generate_can_data():
             "byte_6": round(random.uniform(5.0, 9.0), 2),   # Low battery
             "byte_7": random.randint(5, 6),          # High gear at low speed
         }
-
-    print("🔁 Generated CAN data:", "Healthy" if is_healthy else "Anomalous", data)
     return data
 
 
@@ -193,22 +194,65 @@ def detect():
         prediction = model.predict(features_df)[0]
         print("🔍 Anomaly detection result:", prediction)
 
-        if prediction == 1:
-            # Format prompt
-            prompt = f"CAN ID: {can_id}, DLC: {dlc}, Data: {bytes_list}"
+        if prediction == -1:
+            # Generate the prompt with only the CAN data
+            prompt = f"CAN ID: {can_id}, DLC: {dlc}, Data: {bytes_list}\n"
 
-            # Generate GPT-2 output
-            gpt_output = gpt2_pipeline(
-                prompt,
-                max_length=150,
+            # Tokenize the input prompt
+            inputs = tokenizer(prompt, return_tensors="pt")
+
+            # Generate response from the fine-tuned model
+            outputs = model.generate(
+                **inputs,
+                max_length=256,
+                do_sample=True,
+                top_k=50,
+                temperature=0.9,
+                repetition_penalty=1.2,
                 pad_token_id=tokenizer.eos_token_id
-            )[0]["generated_text"]
+            )
 
-            # Parse
-            parsed = parse_gpt_output(gpt_output)
+            # Decode the generated output
+            output_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+
+            # Parse the GPT output (assuming the format you expect)
+            parsed = parse_gpt_output(output_text)
             attack = parsed["attack_type"]
             gpt_explanation = parsed["explanation"]
             patch = parsed["patch"]
+
+            # Check if attack is unknown and retry if necessary
+            if attack.lower() in ["unknown", "undefined", "not detected"]:
+                print("🔴 Unknown attack detected. Retrying...")
+                # Retry by adding more context
+                prompt = f"""
+                CAN ID: {can_id}, DLC: {dlc}, Data: {bytes_list}
+                """
+                inputs = tokenizer(prompt, return_tensors="pt")
+                outputs = model.generate(
+                    **inputs,
+                    max_length=256,
+                    do_sample=True,
+                    top_k=50,
+                    temperature=0.9,
+                    repetition_penalty=1.2,
+                    pad_token_id=tokenizer.eos_token_id
+                )
+                output_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+
+                print(output_text)
+
+                parsed = parse_gpt_output(output_text)
+                attack = parsed["attack_type"]
+                gpt_explanation = parsed["explanation"]
+                patch = parsed["patch"]
+
+            # If attack still unknown, handle gracefully
+            if attack.lower() in ["unknown", "undefined", "not detected"]:
+                attack = "Attack type could not be identified."
+                gpt_explanation = "No valid attack explanation available."
+                patch = "Unable to suggest a valid patch."
+
         else:
             attack = "No attack detected"
             gpt_explanation = "No anomaly detected. System ready to go."
@@ -218,7 +262,61 @@ def detect():
         log_threat(data["vehicle_id"], prediction, attack, gpt_explanation, patch)
 
         return jsonify({
-            "result": "anomaly" if prediction == 1 else "normal",
+            "result": "anomaly" if prediction == -1 else "normal",
+            "attack_type": attack,
+            "gpt_explanation": gpt_explanation,
+            "suggested_patch": patch
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)})
+    
+
+@app.route('/g_detect', methods=['POST'])
+def g_detect():
+    try:
+        data = request.get_json()
+
+        # Extract bytes from the request data
+        bytes_list = [data.get(f"byte_{i}", 0) for i in range(8)]
+        can_id = data["can_id"]
+        dlc = data["dlc"]
+
+        # For IsolationForest input
+        features_dict = {
+            "can_id": can_id,
+            "dlc": dlc,
+            **{f"byte_{i}": bytes_list[i] for i in range(8)}
+        }
+
+        features_df = pd.DataFrame([features_dict])
+        prediction = model.predict(features_df)[0]
+        print("🔍 Anomaly detection result:", prediction)
+
+        if prediction == -1:
+            # Generate the prompt with only the CAN data
+            prompt = f"CAN ID: {can_id}, DLC: {dlc}, Data: {bytes_list} Give the output in 3 lines, Attack Type: (one line max), Explanation:(one line max) and Suggested Patch: (one line max) Stick to the format strictly.\n"
+
+            # First pass - Get response from GPT-2 based on CAN data
+            g_output = getResponse(prompt)
+
+            print("GPT-2 Output:", g_output)
+
+            # Parse the GPT output into attack type, explanation, and patch
+            parsed = parse_gpt_output(g_output)
+            attack = parsed["attack_type"]
+            gpt_explanation = parsed["explanation"]
+            patch = parsed["patch"]
+        else:
+            attack = "No attack detected"
+            gpt_explanation = "No anomaly detected. System ready to go."
+            patch = "No patch needed"
+
+        # Log threat data for history (Optional function)
+        log_threat(data["vehicle_id"], prediction, attack, gpt_explanation, patch)
+
+        return jsonify({
+            "result": "anomaly" if prediction == -1 else "normal",
             "attack_type": attack,
             "gpt_explanation": gpt_explanation,
             "suggested_patch": patch
@@ -305,6 +403,7 @@ def apply_patch():
 
         # Step 2: Log the applied patch (optional, for history)
         log_patch(patch_text)
+        print(patch_text)
 
         # Step 3: Return response
         return jsonify({
@@ -312,6 +411,7 @@ def apply_patch():
             "patch_applied": patch_text,
             "patch_data": can_patch
         })
+    
 
     except Exception as e:
         return jsonify({"error": str(e)})
@@ -324,7 +424,7 @@ def generate_response():
         data = request.get_json()
         user_input = data.get("input", "No input provided.")
 
-        # Use GPT-2 pipeline to generate a response
+        #Use GPT-2 pipeline to generate a response
         gpt_output = gpt2_pipeline(user_input, max_length=100, num_return_sequences=1)[0]["generated_text"]
 
         return jsonify({"response": gpt_output.strip()})

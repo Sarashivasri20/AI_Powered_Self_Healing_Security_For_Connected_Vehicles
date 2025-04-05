@@ -89,7 +89,7 @@ def train_anomaly_model():
     print(f"📊 Total training samples: {len(df)}")
 
     print("🧠 Training Isolation Forest...")
-    contamination_rate = 0.02
+    contamination_rate = 0.03
     model = IsolationForest(
         contamination=contamination_rate,
         random_state=42

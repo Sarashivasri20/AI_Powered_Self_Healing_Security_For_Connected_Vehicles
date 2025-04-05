@@ -59,7 +59,7 @@ function Main() {
     const detectAnomaly = async () => {
       if (!vehicleData || !backendAvailable) return;
       try {
-        const response = await axios.post("http://127.0.0.1:5000/detect", vehicleData);
+        const response = await axios.post("http://127.0.0.1:5000/g_detect", vehicleData);
         setDetectionResult(response.data);
       } catch (error) {
         console.error("Auto detection error:", error);
@@ -67,7 +67,7 @@ function Main() {
     };
 
     detectAnomaly();
-    const interval = setInterval(detectAnomaly, 20000);
+    const interval = setInterval(detectAnomaly, 5000);
     return () => clearInterval(interval);
   }, [vehicleData, backendAvailable]);
 
