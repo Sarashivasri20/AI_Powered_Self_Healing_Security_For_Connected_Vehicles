@@ -74,7 +74,7 @@ def fetch_threat_history(limit=10):
     cursor.execute('''
         SELECT id, timestamp, vehicle_id, anomaly_score, attack, gpt_explanation, suggested_patch 
         FROM threats 
-        WHERE anomaly_score = 1 
+        WHERE anomaly_score = -1 
         ORDER BY timestamp DESC 
         LIMIT ?
     ''', (limit,))
@@ -137,4 +137,30 @@ def get_threat(timestamp):
     return last_threat if last_threat else None
 
 
+# init_db()
+# patch_logger()
+# import random
+
+# List of attack types and corresponding explanations and patches
+# attack_types = [
+#     ("DoS", "A DoS attack floods the CAN bus with high-priority messages, preventing normal communication.", 
+#             "Activate the vehicle's security update to handle message overloads."),
+#     ("Fuzzy", "A Fuzzy attack sends malformed or random data to confuse or crash ECUs.",
+#             "Enable data validity checks to prevent unsafe reads."),
+#     ("Impersonation", "An Impersonation attack uses spoofed IDs to mimic legitimate ECUs and inject malicious data.",
+#             "Turn on ID verification to block unauthorized messages."),
+#     ("Attack_free", "No attack detected. All vehicle systems appear to be operating normally.",
+#             "No action needed – vehicle is normal.")
+# ]
+
+# # Manually log random threats with explanations and patches
+# for _ in range(15):  # Log 5 random threats
+#     attack_type, explanation, patch = random.choice(attack_types)
+    
+#     # Set anomaly score based on attack type
+#     anomaly_score = -1 if attack_type != "Attack_free" else 1
+    
+#     # Log the threat for vehicle 001 (or any other vehicle ID)
+#     log_threat(vehicle_id="001", anomaly_score=anomaly_score, attack=attack_type, 
+#                gpt_explanation=explanation, suggested_patch=patch)
 

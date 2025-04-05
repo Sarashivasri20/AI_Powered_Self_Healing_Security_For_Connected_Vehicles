@@ -17,16 +17,16 @@ function SystemLogs() {
           {
             timestamp: "2025-04-02 12:00:00",
             vehicle_id: "V-12345",
-            anomaly_score: 1,
-            attack_type: "CAN Bus Flood Attack",
+            anomaly_score: -1,
+            attack: "CAN Bus Flood Attack",
             gpt_explanation: "An unusually high number of CAN messages detected.",
             suggested_patch: "Apply message rate limiting on ECU."
           },
           {
             timestamp: "2025-04-02 11:45:00",
             vehicle_id: "V-67890",
-            anomaly_score: 1,
-            attack_type: "Normal Operation",
+            anomaly_score: -1,
+            attack: "Normal Operation",
             gpt_explanation: "No significant anomalies detected.",
             suggested_patch: "No action required."
           }
@@ -42,13 +42,13 @@ function SystemLogs() {
   }, []);
 
   const getBadgeVariant = (anomalyScore) => {
-    if (anomalyScore == 1) return "danger";
+    if (anomalyScore == -1) return "danger";
     return "success";                            // no anomaly
   };
 
   return (
     <Container className="system-logs-container mt-4">
-      <h2 className="text-primary mb-3">📜 Threat Logs</h2>
+      <h2 className="text-primary mb-3">📜 System Logs</h2>
       {loading ? (
         <Spinner animation="border" variant="primary" />
       ) : logs.length === 0 ? (

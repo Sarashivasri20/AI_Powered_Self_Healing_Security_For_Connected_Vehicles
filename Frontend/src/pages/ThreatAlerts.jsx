@@ -23,19 +23,19 @@ function ThreatAlerts() {
           {
             id: 1,
             timestamp: "2025-04-02 12:00:00",
-            attack_type: "ECU Tampering",
+            attack: "ECU Tampering",
             suggested_patch: "Update ECU firmware immediately.",
           },
           {
             id: 2,
             timestamp: "2025-04-02 12:05:00",
-            attack_type: "CAN Bus Flood Attack",
+            attack: "CAN Bus Flood Attack",
             suggested_patch: "Limit message rate from unknown sources.",
           },
           {
             id: 3,
             timestamp: "2025-04-02 12:10:00",
-            attack_type: "Unauthorized Access",
+            attack: "Unauthorized Access",
             suggested_patch: "Change system access credentials.",
           },
         ]);
