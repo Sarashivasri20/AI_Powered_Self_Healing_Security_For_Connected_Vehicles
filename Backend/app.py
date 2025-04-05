@@ -10,6 +10,14 @@ import os
 # Your modules
 from history_logger import log_threat, fetch_threat_history, fetch_history, get_threat, log_patch
 from whisper_tts import transcribe_audio, generate_speech
+from transformers import GPT2LMHeadModel, GPT2Tokenizer, pipeline
+
+# Load model and tokenizer the Hugging Face way
+model = GPT2LMHeadModel.from_pretrained("./model/distilgpt2_model")
+tokenizer = GPT2Tokenizer.from_pretrained("./model/distilgpt2_model")
+
+# Create the text generation pipeline
+gpt2_pipeline = pipeline("text-generation", model=model, tokenizer=tokenizer)
 
 UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), "..", "data")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -25,6 +33,99 @@ current_vehicle_data = {}
 
 # Generate random simulated CAN data
 import random
+
+#parse the gpt output
+def parse_gpt_output(output):
+    """
+    Extracts attack type, explanation, and patch from GPT-2 response text.
+    Assumes response is in format:
+    Attack Type: XYZ
+    Explanation: ...
+    Suggested Patch: ...
+    """
+    attack_type = ""
+    explanation = ""
+    patch = ""
+
+    # Normalize newlines
+    lines = output.strip().split("\n")
+    combined_output = " ".join(lines)
+
+    # Regex patterns
+    attack_match = re.search(r"Attack Type:\s*(.*?)(?:Explanation:|Suggested Patch:|$)", combined_output, re.IGNORECASE)
+    explanation_match = re.search(r"Explanation:\s*(.*?)(?:Suggested Patch:|Attack Type:|$)", combined_output, re.IGNORECASE)
+    patch_match = re.search(r"Suggested Patch:\s*(.*)", combined_output, re.IGNORECASE)
+
+    if attack_match:
+        attack_type = attack_match.group(1).strip()
+
+    if explanation_match:
+        explanation = explanation_match.group(1).strip()
+
+    if patch_match:
+        patch = patch_match.group(1).strip()
+
+    return {
+        "attack_type": attack_type,
+        "explanation": explanation,
+        "patch": patch
+    }
+
+# Function to encode patch text into CAN byte-style format
+def encode_patch_to_can(patch_text):
+    patch_text = patch_text.lower()
+
+    if "ids" in patch_text and "monitor" in patch_text:
+        return {
+            "byte_0": 0x02,  # ENABLE_IDS
+            "byte_1": 0xB1,  # CAN_MONITOR
+            "byte_2": 0x01,  # ACTIVE_MONITORING
+            "byte_3": 0x00,
+            "byte_4": 0x00,
+            "byte_5": 0x00,
+            "byte_6": 0x00,
+            "byte_7": 0x00
+        }
+
+    elif "security update" in patch_text and "overload" in patch_text:
+        return {
+            "byte_0": 0x03,  # THROTTLING MODE
+            "byte_1": 0xA2,  # NETWORK CONTROL MODULE
+            "byte_2": 0x02,  # OVERLOAD HANDLER
+            "byte_3": 0x00,
+            "byte_4": 0x00,
+            "byte_5": 0x00,
+            "byte_6": 0x00,
+            "byte_7": 0x00
+        }
+
+    elif "data validity" in patch_text:
+        return {
+            "byte_0": 0x04,  # VALIDATION MODULE
+            "byte_1": 0xC3,
+            "byte_2": 0x01,
+            "byte_3": 0x00,
+            "byte_4": 0x00,
+            "byte_5": 0x00,
+            "byte_6": 0x00,
+            "byte_7": 0x00
+        }
+
+    elif "id verification" in patch_text:
+        return {
+            "byte_0": 0x05,  # AUTH MODULE
+            "byte_1": 0xD4,
+            "byte_2": 0x01,
+            "byte_3": 0x00,
+            "byte_4": 0x00,
+            "byte_5": 0x00,
+            "byte_6": 0x00,
+            "byte_7": 0x00
+        }
+
+    # Default: fallback — encode first 8 characters
+    return {f"byte_{i}": ord(c) % 256 for i, c in enumerate(patch_text[:8])}
+
 
 def generate_can_data():
     # 70% chance of healthy, 30% chance of anomaly
@@ -75,36 +176,57 @@ def update_vehicle_data():
 def detect():
     try:
         data = request.get_json()
+
+        # Extract bytes
+        bytes_list = [data.get(f"byte_{i}", 0) for i in range(8)]
+        can_id = data["can_id"]
+        dlc = data["dlc"]
+
+        # For IsolationForest input
         features_dict = {
-            "can_id": data["can_id"],
-            "dlc": data["dlc"],
-            **{f"byte_{i}": data.get(f"byte_{i}", 0) for i in range(8)}
+            "can_id": can_id,
+            "dlc": dlc,
+            **{f"byte_{i}": bytes_list[i] for i in range(8)}
         }
+
         features_df = pd.DataFrame([features_dict])
         prediction = model.predict(features_df)[0]
         print("🔍 Anomaly detection result:", prediction)
 
-        gpt_explanation = "Potential attack detected in vehicle CAN network." if prediction == 1 else None
-        patch = "Apply IDS rule to monitor abnormal CAN packets." if prediction == 1 else None
-        result = "anomaly" if prediction == 1 else "normal"
-        attack = "CAN Flooding" if prediction == 1 else "No attack detected"
-
-        print("🔍 Anomaly detection result:", prediction, "Attack type:", attack)
-
         if prediction == 1:
-            # Log the threat with the GPT-like explanation
-            log_threat(data["vehicle_id"], prediction, attack, gpt_explanation, patch)
+            # Format prompt
+            prompt = f"CAN ID: {can_id}, DLC: {dlc}, Data: {bytes_list}"
+
+            # Generate GPT-2 output
+            gpt_output = gpt2_pipeline(
+                prompt,
+                max_length=150,
+                pad_token_id=tokenizer.eos_token_id
+            )[0]["generated_text"]
+
+            # Parse
+            parsed = parse_gpt_output(gpt_output)
+            attack = parsed["attack_type"]
+            gpt_explanation = parsed["explanation"]
+            patch = parsed["patch"]
         else:
-            log_threat(data["vehicle_id"], prediction, "No anomaly detected", "No anomaly detected. System ready to go", "no patch needed at this stage")
+            attack = "No attack detected"
+            gpt_explanation = "No anomaly detected. System ready to go."
+            patch = "No patch needed"
+
+        # Log for history
+        log_threat(data["vehicle_id"], prediction, attack, gpt_explanation, patch)
 
         return jsonify({
-            "result": result,
+            "result": "anomaly" if prediction == 1 else "normal",
+            "attack_type": attack,
             "gpt_explanation": gpt_explanation,
             "suggested_patch": patch
         })
 
     except Exception as e:
         return jsonify({"error": str(e)})
+
 
 # Return current vehicle CAN data
 @app.route('/vehicle_data', methods=['GET'])
@@ -173,43 +295,26 @@ def text_to_speech():
 def apply_patch():
     try:
         data = request.get_json()
-        timestamp = data.get("timestamp", None)  # Frontend provides timestamp
+        patch_text = data.get("patch", None)
 
-        if not timestamp:
-            return jsonify({"error": "Timestamp is required to fetch the correct threat log."})
+        if not patch_text:
+            return jsonify({"error": "Patch text is required."})
 
-        last_threat = get_threat(timestamp)
+        # Step 1: Encode patch into CAN byte-style format
+        can_patch = encode_patch_to_can(patch_text)
 
-        if not last_threat:
-            return jsonify({"error": f"No threat log found for at {timestamp}."})
+        # Step 2: Log the applied patch (optional, for history)
+        log_patch(patch_text)
 
-        anomaly_score, attack, suggested_patch = last_threat
-
-        # 🚗 Determine the patch based on the attack type
-        patch_message = generate_patch(attack, suggested_patch)
-
-        # Store applied patch
-        log_patch(patch_message)
-
-        # 🚗 Convert patch message into a byte payload (simulating a firmware update)
-        can_patch = {f"byte_{i}": ord(c) % 256 for i, c in enumerate(patch_message[:8])}
-        print(f"🚗 Sending patch : {can_patch}")
-
+        # Step 3: Return response
         return jsonify({
-            "status": f"Patch sent",
-            "original_anomaly": {
-                "attack": attack,
-                "suggested_patch": suggested_patch,
-                "anomaly_score": anomaly_score,
-                "timestamp": timestamp
-            },
-            "patch_applied": patch_message,
-            "patch_data": can_patch,
+            "status": "Patch applied successfully.",
+            "patch_applied": patch_text,
+            "patch_data": can_patch
         })
 
     except Exception as e:
         return jsonify({"error": str(e)})
-
 
 
 # Simulated GPT-like chatbot response
@@ -219,14 +324,10 @@ def generate_response():
         data = request.get_json()
         user_input = data.get("input", "No input provided.")
 
-        simulated_responses = {
-            "What was the last detected threat?": "The last detected threat was an ECU Tampering attack.",
-            "How do I secure my CAN network?": "Implement an Intrusion Detection System and encrypt CAN messages.",
-            "What is anomaly detection?": "Anomaly detection identifies patterns that deviate from expected behavior.",
-        }
+        # Use GPT-2 pipeline to generate a response
+        gpt_output = gpt2_pipeline(user_input, max_length=100, num_return_sequences=1)[0]["generated_text"]
 
-        response = simulated_responses.get(user_input, "The last detected threat was an ECU Tampering attack.")
-        return jsonify({"response": response})
+        return jsonify({"response": gpt_output.strip()})
     except Exception as e:
         return jsonify({"error": str(e)})
 
