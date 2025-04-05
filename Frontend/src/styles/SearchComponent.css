@@ -1,0 +1,50 @@
+.search-container {
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .button-container {
+    margin-bottom: 10px;
+  }
+  
+  .record-button {
+    background-color: #1976d2;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 30px;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.3s ease;
+    font-size: 16px;
+  }
+  
+  .record-button:hover {
+    background-color: #1565c0;
+    transform: scale(1.05);
+  }
+  
+  .record-button.stop {
+    background-color: #d32f2f;
+  }
+  
+  .record-button.stop:hover {
+    background-color: #c62828;
+  }
+  
+  .record-button span {
+    margin-left: 8px;
+  }
+  
+  .search-textfield {
+    width: 300px;
+    transition: box-shadow 0.3s ease;
+  }
+  
+  .search-textfield:hover {
+    box-shadow: 0 0 5px rgba(25, 118, 210, 0.5);
+  }
+  
