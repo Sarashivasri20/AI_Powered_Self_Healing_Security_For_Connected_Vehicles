@@ -164,3 +164,7 @@ def get_threat(timestamp):
 #     log_threat(vehicle_id="001", anomaly_score=anomaly_score, attack=attack_type, 
 #                gpt_explanation=explanation, suggested_patch=patch)
 
+
+
+# if __name__ == "__main__":
+#     print(fetch_history())
