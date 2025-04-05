@@ -8,6 +8,10 @@ import Header from "./components/Header.jsx";
 import ScreenLoader from "./components/ScreenLoader.jsx";
 import Loading from "./components/Loading.jsx";
 import "./index.css";
+import AOS from 'aos';
+import 'aos/dist/aos.css'; 
+
+AOS.init();
 
 
 const Dashboard = lazy(() => import("./pages/Dashboard.jsx"));
@@ -21,6 +25,18 @@ function Main() {
   const [vehicleData, setVehicleData] = useState(null);
   const [detectionResult, setDetectionResult] = useState(null);
   const [backendAvailable, setBackendAvailable] = useState(true);
+
+  useEffect(() => {
+    AOS.init({
+      duration: 1000, // animation duration in ms
+      once: true      // animate only once when scrolled into view
+    });
+  }, []);
+  
+  useEffect(() => {
+    AOS.refresh(); // 👈 this ensures AOS recalculates animations on new content
+  });
+  
 
   useEffect(() => {
     const fetchVehicleData = async () => {
