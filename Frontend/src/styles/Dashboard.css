@@ -14,11 +14,15 @@
 
 
 .text-gradient {
-  background: linear-gradient(90deg, #007bff, #00d4ff);
+  font-family: 'Bebas Neue', sans-serif;  /* Apply Bebas Neue font */
+  background: linear-gradient(90deg, #eff0f1, #fdffff);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  font-weight: 700;
+  font-weight: 900;  /* Make it extra bold */
+  font-size: 4rem;   /* Adjust the font size to make it more prominent */
 }
+
+
 
 .gradient-badge {
   background: linear-gradient(to right, #ff416c, #ff4b2b);
