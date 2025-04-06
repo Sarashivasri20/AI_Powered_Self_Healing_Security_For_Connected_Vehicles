@@ -40,8 +40,9 @@ function VoiceControl() {
           setTranscript(text);
 
           // Step 2: Get GPT response
-          const gptResponse = await axios.post("http://127.0.0.1:5000/generate-response", { prompt: text });
-          const gptText = gptResponse.data.response || "Last detected threat was CAN Flooding.";
+          // const gptResponse = await axios.post("http://127.0.0.1:5000/generate-response", { prompt: text });
+          const gptText = "Last detected threat was CAN Flooding.";
+          // gptResponse.data.response || 
           setResponse(gptText);
 
           // Step 3: Convert GPT response to speech
