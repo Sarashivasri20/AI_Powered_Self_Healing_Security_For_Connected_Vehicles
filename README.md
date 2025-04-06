@@ -69,7 +69,6 @@ This Flask-based application simulates a connected vehicle's CAN bus environment
 2. Set up a virtual environment:
 3. Install requirements:
 4. Run the Flask app: python app.py
-> The app starts on `http://localhost:5000/`
 
 ## ML Model Info
 
@@ -105,5 +104,6 @@ self_healing_ai_patch/           # Root project folder
 │   ├── sample_logs.txt          # Sample log outputs for debugging
 │
 └── .gitignore                   # Git ignore rules
+
 
 

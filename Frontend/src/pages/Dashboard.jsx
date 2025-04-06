@@ -30,7 +30,7 @@ function Dashboard({ vehicleData, detectionResult }) {
       <h2 className="text-center text-gradient mb-5">⚙️ Vehicle Security Dashboard</h2>
 
       <Row className="gy-4">
-        <Col md={3}>
+        <Col md={3} data-aos="fade-up" data-aos-delay="100">
           <Card className="dashboard-card shadow-md h-100 glass-effect">
             <Card.Body className="text-center">
               <FaTachometerAlt size={40} className="mb-3 text-info" />
@@ -41,7 +41,7 @@ function Dashboard({ vehicleData, detectionResult }) {
           </Card>
         </Col>
 
-        <Col md={6}>
+        <Col md={6} data-aos="zoom-in" data-aos-delay="300">
           <Card className={`dashboard-card shadow-md text-center h-100 pulse-card ${isThreatDetected ? "border-danger threat-flash" : "border-success"}`}>
             <Card.Body>
               {isThreatDetected ? (
@@ -64,7 +64,7 @@ function Dashboard({ vehicleData, detectionResult }) {
           </Card>
         </Col>
 
-        <Col md={3}>
+        <Col md={3} data-aos="fade-up" data-aos-delay="500">
           <Card className="dashboard-card shadow-md h-100 glass-effect">
             <Card.Body className="text-center">
               <FaCarBattery size={40} className="mb-3 text-success" />

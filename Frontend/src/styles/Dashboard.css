@@ -1,12 +1,17 @@
 .dashboard-card {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 1.5rem;
-  transition: all 0.3s ease-in-out;
+  transition: all 0.4s ease;
 }
 
+
 .dashboard-card:hover {
-  transform: scale(1.02);
-  box-shadow: 0 0 8px rgba(0, 123, 255, 0.2);
+  transform: translateY(-5px) scale(1.02);
+  box-shadow: 0 12px 20px rgba(0, 123, 255, 0.2);
 }
+
 
 .text-gradient {
   background: linear-gradient(90deg, #007bff, #00d4ff);
