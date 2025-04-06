@@ -28,7 +28,7 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 
 # Load trained anomaly detection model
 # model = joblib.load("./model/random_forest_model.pkl")
-model = joblib.load("./model/anomaly_model.pkl")
+anomaly_model = joblib.load("./model/anomaly_model.pkl")
 
 # Global vehicle data
 current_vehicle_data = {}
@@ -75,23 +75,28 @@ def parse_g_output(output):
 
 def parse_gpt_output(output_text):
     """
-    Parse the GPT output to extract attack type, explanation, and patch.
+    Clean and parse GPT output: remove echoed input, extract key fields robustly.
     """
-    # Regular expressions to extract parts of the output
-    attack_type_match = re.search(r"Attack Type:\s*(\S+)", output_text)
-    explanation_match = re.search(r"Explanation:\s*(.*?)(?=Suggested Patch:|$)", output_text, re.DOTALL)
-    patch_match = re.search(r"Suggested Patch:\s*(.*?)(?=Suggestion|$)", output_text, re.DOTALL)
+    # Trim everything before "Attack Type"
+    start_index = re.search(r"(?i)attack\s*type\s*:", output_text)
+    if start_index:
+        output_text = output_text[start_index.start():]
+    else:
+        return {
+            "attack_type": "Unknown",
+            "explanation": "No explanation available.",
+            "patch": "No patch suggested."
+        }
 
-    # Extract values or set defaults if not found
-    attack_type = attack_type_match.group(1) if attack_type_match else "Unknown"
-    explanation = explanation_match.group(1).strip() if explanation_match else "No explanation available."
-    patch = patch_match.group(1).strip() if patch_match else "No patch suggested."
+    # Extract fields as before
+    attack_type_match = re.search(r"(?i)attack\s*type\s*:\s*(.+?)(?=\n|$)", output_text)
+    explanation_match = re.search(r"(?i)explanation\s*:\s*(.+?)(?=\n|suggested\s*patch\s*:|$)", output_text, re.DOTALL)
+    patch_match = re.search(r"(?i)suggested\s*patch\s*:\s*(.+?)(?=\n|$)", output_text, re.DOTALL)
 
-    # Return the parsed values
     return {
-        "attack_type": attack_type,
-        "explanation": explanation,
-        "patch": patch
+        "attack_type": attack_type_match.group(1).strip() if attack_type_match else "Unknown",
+        "explanation": explanation_match.group(1).strip() if explanation_match else "No explanation available.",
+        "patch": patch_match.group(1).strip() if patch_match else "No patch suggested."
     }
 
 # Function to encode patch text into CAN byte-style format
@@ -150,56 +155,56 @@ def encode_patch_to_can(patch_text):
     return {f"byte_{i}": ord(c) % 256 for i, c in enumerate(patch_text[:8])}
 
 
-# def generate_can_data():
-#     # 70% chance of healthy, 30% chance of anomaly
-#     is_healthy = random.random() < 0.7
-
-#     if is_healthy:
-#         data = {
-#             "vehicle_id": f"Vehicle_001",
-#             "can_id": random.randint(0x100, 0x7FF),
-#             "dlc": random.randint(1, 8),
-#             "byte_0": random.randint(800, 3000),     # RPM
-#             "byte_1": random.randint(0, 60),         # Throttle %
-#             "byte_2": random.randint(0, 100),        # Brake Pressure
-#             "byte_3": random.randint(-20, 20),       # Steering Angle
-#             "byte_4": random.randint(0, 120),        # Speed km/h
-#             "byte_5": random.randint(30, 80),        # Fuel %
-#             "byte_6": round(random.uniform(11.5, 13.5), 2),  # Battery Voltage
-#             "byte_7": random.randint(1, 5),          # Gear
-#         }
-#     else:
-#         data = {
-#             "vehicle_id": f"Vehicle_001",
-#             "can_id": random.randint(0x100, 0x7FF),
-#             "dlc": random.randint(1, 8),
-#             "byte_0": random.randint(7000, 9000),    # High RPM
-#             "byte_1": random.randint(90, 100),       # Throttle maxed
-#             "byte_2": random.randint(200, 255),      # Brake to max
-#             "byte_3": random.randint(-90, 90),       # Wild steering
-#             "byte_4": random.randint(180, 250),      # Over-speeding
-#             "byte_5": random.randint(0, 5),          # Fuel nearly empty
-#             "byte_6": round(random.uniform(5.0, 9.0), 2),   # Low battery
-#             "byte_7": random.randint(5, 6),          # High gear at low speed
-#         }
-#     return data
-
-
 def generate_can_data():
-    # Example CAN data generation
-    return {
-        "vehicle_id": "Vehicle_001",
-        "can_id": 450,
-        "dlc": 8,
-        "byte_0": 200,
-        "byte_1": 255,
-        "byte_2": 200,
-        "byte_3": 250,
-        "byte_4": 17,
-        "byte_5": 223,
-        "byte_6": 125,
-        "byte_7": 160,
-    }
+    # 70% chance of healthy, 30% chance of anomaly
+    is_healthy = random.random() < 0.7
+
+    if is_healthy:
+        data = {
+            "vehicle_id": f"Vehicle_001",
+            "can_id": random.randint(0x100, 0x7FF),
+            "dlc": random.randint(1, 8),
+            "byte_0": random.randint(800, 3000),     # RPM
+            "byte_1": random.randint(0, 60),         # Throttle %
+            "byte_2": random.randint(0, 100),        # Brake Pressure
+            "byte_3": random.randint(-20, 20),       # Steering Angle
+            "byte_4": random.randint(0, 120),        # Speed km/h
+            "byte_5": random.randint(30, 80),        # Fuel %
+            "byte_6": round(random.uniform(11.5, 13.5), 2),  # Battery Voltage
+            "byte_7": random.randint(1, 5),          # Gear
+        }
+    else:
+        data = {
+            "vehicle_id": f"Vehicle_001",
+            "can_id": random.randint(0x100, 0x7FF),
+            "dlc": random.randint(1, 8),
+            "byte_0": random.randint(7000, 9000),    # High RPM
+            "byte_1": random.randint(90, 100),       # Throttle maxed
+            "byte_2": random.randint(200, 255),      # Brake to max
+            "byte_3": random.randint(-90, 90),       # Wild steering
+            "byte_4": random.randint(180, 250),      # Over-speeding
+            "byte_5": random.randint(0, 5),          # Fuel nearly empty
+            "byte_6": round(random.uniform(5.0, 9.0), 2),   # Low battery
+            "byte_7": random.randint(5, 6),          # High gear at low speed
+        }
+    return data
+
+
+# def generate_can_data():
+#     # Example CAN data generation
+#     return {
+#         "vehicle_id": "Vehicle_001",
+#         "can_id": 450,
+#         "dlc": 8,
+#         "byte_0": 200,
+#         "byte_1": 255,
+#         "byte_2": 200,
+#         "byte_3": 250,
+#         "byte_4": 17,
+#         "byte_5": 223,
+#         "byte_6": 125,
+#         "byte_7": 160,
+#     }
     
 
 # Background thread to simulate real-time CAN data
@@ -220,7 +225,7 @@ def detect():
         can_id = data["can_id"]
         dlc = data["dlc"]
 
-        # For IsolationForest input
+        # For Isolation Forest input
         features_dict = {
             "can_id": can_id,
             "dlc": dlc,
@@ -228,19 +233,16 @@ def detect():
         }
 
         features_df = pd.DataFrame([features_dict])
-        prediction = model.predict(features_df)[0]
+        prediction = anomaly_model.predict(features_df)[0]  # 👈 Use correct model here
         print("🔍 Anomaly detection result:", prediction)
 
         if prediction == -1:
-            # Generate the prompt with only the CAN data
-            prompt = f"""CAN ID: {can_id}, DLC: {dlc}, Data: {bytes_list}"""
-
+            # Initial GPT prompt
+            prompt = f"CAN ID: {can_id}, DLC: {dlc}, Data: {bytes_list}"
             print("Prompt for GPT-2:", prompt)
 
-            # Tokenize the input prompt
-            inputs = tokenizer(prompt, return_tensors="pt")
-
-            # Generate response from the fine-tuned model
+            # Tokenize
+            inputs = tokenizer(prompt, return_tensors="pt")  # 👈 Correct tokenizer
             outputs = model.generate(
                 **inputs,
                 max_length=256,
@@ -250,28 +252,27 @@ def detect():
                 repetition_penalty=1.2,
                 pad_token_id=tokenizer.eos_token_id
             )
-
-            print("Generated output tokens:", outputs)
-
-            # Decode the generated output
             output_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
-
             print("GPT-2 Output:", output_text)
 
-            # Parse the GPT output (assuming the format you expect)
-            parsed = parse_g_output(output_text)
+            # Parse
+            parsed = parse_gpt_output(output_text)
             attack = parsed["attack_type"]
             gpt_explanation = parsed["explanation"]
             patch = parsed["patch"]
 
-            # Check if attack is unknown and retry if necessary
-            if attack.lower() in ["unknown", "undefined", "not detected"]:
-                print("🔴 Unknown attack detected. Retrying...")
-                # Retry by adding more context
-                prompt = f"""
+            # Retry logic for unclear attack
+            if attack.lower() in ["unknown", "undefined", "not detected", "attack"]:
+                print("🔴 Unknown attack detected. Retrying with context...")
+                retry_prompt = f"""
+                The following CAN message may be malicious. Analyze it and respond in this format:
+                Attack Type: ...
+                Explanation: ...
+                Suggested Patch: ...
+                
                 CAN ID: {can_id}, DLC: {dlc}, Data: {bytes_list}
                 """
-                inputs = tokenizer(prompt, return_tensors="pt")
+                inputs = tokenizer(retry_prompt.strip(), return_tensors="pt")
                 outputs = model.generate(
                     **inputs,
                     max_length=256,
@@ -282,15 +283,13 @@ def detect():
                     pad_token_id=tokenizer.eos_token_id
                 )
                 output_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+                print("GPT-2 Retry Output:", output_text)
 
-                print(output_text)
-
-                parsed = parse_g_output(output_text)
+                parsed = parse_gpt_output(output_text)  # 👈 Fixed function name
                 attack = parsed["attack_type"]
                 gpt_explanation = parsed["explanation"]
                 patch = parsed["patch"]
 
-            # If attack still unknown, handle gracefully
             if attack.lower() in ["unknown", "undefined", "not detected", "attack"]:
                 attack = "Attack type could not be identified."
                 gpt_explanation = "No valid attack explanation available."
@@ -301,7 +300,7 @@ def detect():
             gpt_explanation = "No anomaly detected. System ready to go."
             patch = "No patch needed"
 
-        # Log for history
+        # Log it
         log_threat(data["vehicle_id"], prediction, attack, gpt_explanation, patch)
 
         return jsonify({
@@ -333,7 +332,7 @@ def g_detect():
         }
 
         features_df = pd.DataFrame([features_dict])
-        prediction = model.predict(features_df)[0]
+        prediction = anomaly_model.predict(features_df)[0]
         print("🔍 Anomaly detection result:", prediction)
 
         if prediction == -1:
